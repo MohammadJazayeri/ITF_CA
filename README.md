@@ -59,3 +59,93 @@ This repository contains a **minimal, educational** re-implementation of key ide
 | `<send>` | `url`               | Forwards the message to the given URL     |
 
 Happy hacking! ✨
+
+---
+
+# MCP Services Demo (Two AI Agents)
+
+This repository also ships with a **pair of tiny [Model Context Protocol](https://github.com/modelcontextprotocol) servers** that talk to each other over HTTP.  They are purposely minimal, just enough to show how two MCP-compatible agents can co-operate.
+
+## Directory layout
+
+```
+mcp_services/
+├── service_b.py       # Service B – answers questions
+├── service_a.py       # Service A – asks B, then replies to caller
+├── demo_connect.py    # CLI script that triggers the conversation
+└── __init__.py
+```
+
+## What each service does
+
+1. **Service B** (`mcp_services/service_b.py`)
+   • Endpoint: `POST /mcp`  
+   • Request JSON: `{ "question": "..." }`  
+   • Response JSON: `{ "answer": "..." }` (stubbed, but you can swap in an LLM)
+
+2. **Service A** (`mcp_services/service_a.py`)
+   • Endpoint: `POST /mcp`  
+   • Looks up `SERVICE_B_URL` (default `http://localhost:9002/mcp`) and forwards the user’s question to Service B.  
+   • Returns the **conversation transcript**:
+
+```jsonc
+{
+  "conversation": [
+    { "role": "user", "content": "How are you?" },
+    { "role": "assistant", "content": "Service B here; I’m great!" }
+  ]
+}
+```
+
+## Quick start (two terminals + one script)
+
+1.  **Service B** – port 9002
+
+    ```bash
+    uvicorn mcp_services.service_b:app --port 9002 --reload
+    ```
+
+2.  **Service A** – port 9001 (tell it where B lives)
+
+    ```bash
+    SERVICE_B_URL=http://localhost:9002/mcp \
+    uvicorn mcp_services.service_a:app --port 9001 --reload
+    ```
+
+3.  **Run the demo**
+
+    ```bash
+    python -m mcp_services.demo_connect
+    ```
+
+    Expected output:
+
+    ```text
+    Conversation:
+    User: How are you, Service B?
+    Assistant: Service B here; thanks for asking: ‘How are you, Service B?’. I’m great!
+    ```
+
+## API reference
+
+### Service B
+
+| Method | Path | Body (JSON)                 | Returns (JSON)            |
+| ------ | ---- | --------------------------- | ------------------------- |
+| POST   | /mcp | `{ "question": "..." }`    | `{ "answer": "..." }`    |
+
+### Service A
+
+| Method | Path | Body (JSON)                 | Returns (JSON)                                |
+| ------ | ---- | --------------------------- | --------------------------------------------- |
+| POST   | /mcp | `{ "question": "..." }`    | `{ "conversation": [ {role, content}, … ] }` |
+
+Environment variable: **`SERVICE_B_URL`** – override to point Service A at a different B instance.
+
+## Extending the demo
+
+* Replace the canned reply in `service_b.py` with a call to your favourite LLM.
+* Add more endpoints or tools that conform to the MCP spec.
+* Chain additional services by having Service B consult yet another MCP server.
+
+Have fun exploring agent-to-agent communication! ✨
