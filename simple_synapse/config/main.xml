@@ -1,0 +1,8 @@
+<sequence name="main">
+    <log level="INFO" message="Received message"/>
+    <!-- Only forward requests that contain the header X-Forward: true -->
+    <filter expr="'true' == ctx.headers.get('X-Forward')">
+        <send url="https://httpbin.org/anything"/>
+    </filter>
+    <log level="INFO" message="Completed sequence"/>
+</sequence>
